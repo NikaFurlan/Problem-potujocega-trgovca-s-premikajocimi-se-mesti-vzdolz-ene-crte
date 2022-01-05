@@ -72,6 +72,7 @@ class SLMTTSP:
         self.cilji = cilji
         self.ureditve = [IPO, IPOc, TO, TOc]
         self.F = {} 
+        self.obiskana = set()
         
     def g(self, t, j, i): # najhitrejši čas obiska cilja i, če smo nazadnje obiskali cilj j ob času t
         posi = i.pozicija(t, self.v)
@@ -82,21 +83,35 @@ class SLMTTSP:
         if tt >= i.r:
             return (tt, [(t, posj), (tt, posi)]) # s paroma znotraj [] si zapomnimo odseke trgovčeve poti (na katerih pozicijah je bil ob časih t in tt)
         else:
-            return (i.r, [(t, posj), ("čas, ko dosežemo i.p", i.p), (i.r, i.p)]) # prof: čas = (t + (i.p - posj) / (delta - self.v * i.d), i.p)
+            return (i.r, [(t, posj), (t + (i.p - posj) / delta, i.p), (i.r, i.p)]) 
         # v zadnjem primeru (srednji element seznama) agent čaka na poziciji i.p do časa i.r (v tem primeru je delta = 0)
-        
-    def predhodnik(self, l, C, i):
-        ...
         
     def predhodno_stanje(self, C, i):
         if i is None: # primer, ko ni predhodnega cilja
             return None
         return tuple(min(C[l], self.ureditve[l].indeks(i)) for l in range(4))
+    
+    def obisci(self, i):
+        self.obiskana.add(i)
+        
+    def phi(self, C):
+        return set(C).intersection(self.obiskana)
+    
+    def razlika(self, l, C, i, j): # razlika med zaporednima naboroma (mora vsebovati le en element)
+        return set(self.phi(self.predhodno_stanje(C, i))).difference(self.phi(self.predhodno_stanje(self.predhodno_stanje(C, i), self.ureditve[l].indeks(j)))) 
+    
+    def predhodnik(self, l, C, i): # j preteče indekse vseh ureditev
+        kandidati = []
+        n = len(self.cilji)
+        for j in range(n):
+            if j < self.predhodno_stanje(C, i)[l] and len(self.razlika(l, C, i, j)):
+                kandidati.append(j)
+        return max(kandidati)
         
     def f(self, C, i):
         if (C, i) not in self.F:
             if C == None: # začetni pogoj
-                return (0, None, None)
+                return (0, None, None) # podatki o predhodnem koraku (ki ga tukaj ni)
             kandidati = []
             CC = self.predhodno_stanje(C, i)
             for l in range(4):
