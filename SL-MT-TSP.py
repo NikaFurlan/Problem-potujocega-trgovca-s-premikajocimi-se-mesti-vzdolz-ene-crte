@@ -27,10 +27,10 @@ class Ureditev: # načini, kako razporedimo cilje
     def __getitem__(self, index): # vrne element seznama z indeksom index
         if index < 0:
             return None
-        return self.seznam[index] # ro^(-1)(index)
+        return self.seznam[index] # sigma^(-1)(index)
     
     def indeks(self, cilj): # vrne indeks nekega cilja
-        return self.indeksi[cilj] # ro(cilj)
+        return self.indeksi[cilj] # sigma(cilj)
     
 class ObratnaUreditev: # obratni vrstni red razporeditve ciljev iz razreda Ureditev
     def __init__(self, ureditev):
@@ -69,7 +69,7 @@ class SLMTTSP:
         IPOc = ObratnaUreditev(IPO)
         TOc = ObratnaUreditev(TO)
         self.v = v
-        self.cilji = [None] + cilji
+        self.cilji = cilji
         self.ureditve = [IPO, IPOc, TO, TOc]
         self.F = {} 
         
@@ -89,19 +89,14 @@ class SLMTTSP:
         ...
         
     def predhodno_stanje(self, C, i):
-        # vstavi pogoj za dosegljivost nabora (če je to potrebno?)
-        CC = ()
-        for l in range(4):
-            if "indeks(i)" > C[l]: # kako lahko sem vnesem metodo iz class Ureditev?
-                CC[l] = C[l]
-            else:
-                CC[l] = "indeks(i)" # v seznamu l
-        return CC   
+        if i is None: # primer, ko ni predhodnega cilja
+            return None
+        return tuple(min(C[l], self.ureditve[l].indeks(i)) for l in range(4))
         
     def f(self, C, i):
         if (C, i) not in self.F:
-            if C == (-1, -1, -1, -1): # začetni pogoj
-                return 0
+            if C == None: # začetni pogoj
+                return (0, None, None)
             kandidati = []
             CC = self.predhodno_stanje(C, i)
             for l in range(4):
@@ -113,10 +108,10 @@ class SLMTTSP:
     
     def resi(self):
         n = len(self.cilji) # stevilo vseh ciljev
-        for a in range(-1, n+1):
-            for b in range(-1, n+1):
-                for c in range(-1, n+1):
-                    for d in range(-1, n+1):
+        for a in range(n):
+            for b in range(n):
+                for c in range(n):
+                    for d in range(n):
                         for i in cilji:
                             self.f((a, b, c, d), i)
         return min(self.f((n, n, n, n), i) for i in cilji)
