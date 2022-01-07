@@ -25,8 +25,6 @@ class Ureditev: # načini, kako razporedimo cilje
         return len(self.seznam)
     
     def __getitem__(self, index): # vrne element seznama z indeksom index
-        if index < 0:
-            return None
         return self.seznam[index] # sigma^(-1)(index)
     
     def indeks(self, cilj): # vrne indeks nekega cilja
@@ -40,9 +38,13 @@ class ObratnaUreditev: # obratni vrstni red razporeditve ciljev iz razreda Uredi
         return len(self.ureditev)
     
     def __getitem__(self, index):
-        if index < 0:
-            return None
-        return self.ureditev.seznam[-index-1] 
+        if isinstance(index, slice):
+            index = slice(None if index.start is None else -index.start-1,
+                          None if index.stop is None else -index.stop-1,
+                          -1 if index.step is None else -index.step)
+        else:
+            index = -index-1
+        return self.ureditev.seznam[index]
     
     def indeks(self, cilj):
         return len(self) - self.ureditev.indeks(cilj) - 1
@@ -75,7 +77,7 @@ class SLMTTSP:
         
     def g(self, t, j, i): # najhitrejši čas obiska cilja i, če smo nazadnje obiskali cilj j ob času t
         posi = i.pozicija(t, self.v)
-        posj = j.pozicija(t, self.v)
+        posj = 0 if j is None else j.pozicija(t, self.v)
         razlika = posi - posj
         delta = 1 if razlika > 0 else -1 # hitrost gibanja agenta (pozitivna, če je razlika med zaporednima ciljema pozitivna)
         tt = t + razlika / (delta - self.v * i.d) # najmanjši potreben čas obiska i, dodan k trenutnemu času t
@@ -105,20 +107,22 @@ class SLMTTSP:
         
     def f(self, C, i): # minimalni čas, da dosežemo stanje (C, i)
         if (C, i) not in self.F: 
-            if C is None: # začetni pogoj
-                return (0, None, None) # podatki o predhodnem koraku (ki ga tukaj ni)
             kandidati = []
             CC = self.predhodno_stanje(C, i)
             for l in range(4):
                 j = self.predhodnik(l, C, i)
-                t, _, _ = self.f(CC, j) # funkcija g potrebuje 3 argumente, prvi je čas, ki ga izračunamo s f
+                # če trenutni seznam ne da kandidata, ga preskočimo
+                if j is None:
+                    continue
+                (t, _), _, _ = self.f(CC, j) # funkcija g potrebuje 3 argumente, prvi je čas, ki ga izračunamo s f
                 kandidati.append((self.g(t, j, i), l, j)) 
                 # vsak kandidat je določen s 3 argumenti: 
                 # * rezultat funkcije g (najhitrejši čas obiska cilja i, če smo nazadnje obiskali cilj j ob času t), 
                 # * indeks seznama, iz katerega je prišel naslednji obiskani cilj (l) 
                 # * predhodnik (j) 
                 # najmanjšega od kandidatov shranimo v F pod ključ (C, i) - pripadajoče stanje
-            self.F[C, i] = min(kandidati)
+            # če ni kandidatov, gremo najprej proti cilju i
+            self.F[C, i] = min(kandidati) if kandidati else (self.g(0, None, i), None, None)
         return self.F[C, i]
     
     def resi(self):
