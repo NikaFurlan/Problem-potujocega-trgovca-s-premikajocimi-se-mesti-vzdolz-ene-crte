@@ -4,6 +4,28 @@
 # Kot rezultat nam program izračuna najkrajši čas, ki ga trgovec potrebuje, da obišče vse cilje ter vrstni red, po
 # katerem jih obišče.
 
+# Metoda generiraj_seznam_d_r_p generira naključne sezname smeri premikanja ciljev, njihovih časov sprostitve in pozicij ob sprostitvi
+# kot vhodna podatka podamo:
+# * a in b: časovni interval časov sprostitve ciljev
+# * e in f: interval pozicij ciljev ob času sprostitve
+# * n: število ciljev
+import random
+def generiraj_sezname_d_r_p(a,b,e,f,n):
+    if a < 0 or b < 0:
+        return "Vhodna podatka a in b prikazujeta interval, na katerem so razporejeni časi sprostitve ciljev. Le-ti pa morajo biti nenegativni. Popravi vhodne podatke, da bodo ustrezni."
+    else:
+        d = []
+        r = []
+        p = []
+        for i in range(n): # imamo n ciljev, generiramo vse 3 parametre za vsakega od njih
+            d1 = random.randrange(-1,2,2) # d vsebuje -1 in 1 (začetek, konec, korak)
+            d.append(d1)
+            r1 = random.uniform(a,b)
+            r.append(r1)
+            p1 = random.uniform(e,f)
+            p.append(p1)
+        return (d,r,p) # vrnemo nabor 3 seznamov
+
 # v razredu Cilj so opisane lastnosti in metode vsakega od podanih ciljev (mest)
 class Cilj:
     def __init__(self, d, r, p): # kaj imamo podano za vsak cilj: d = smer gibanja, r = čas sprostitve, p = pozicija ob r
@@ -58,19 +80,19 @@ class ObratnaUreditev: # obratni vrstni red razporeditve ciljev iz razreda Uredi
         return len(self) - self.ureditev.indeks(cilj) - 1
 
 # nekaj primerov uporabe    
-# * poskrbi, da je vsak cilj določen s 3 ločenimi argumenti
-cilji = [Cilj(*p) for p in zip([1, 1, -1, -1, -1, 1, -1], [0, 5, 13, 15, 6, 8, 18], [2, 5, -3, 4, 1, -2, -7])]
-
-v = 0.3
-IPO = Ureditev(cilji, lambda c: c.pozicija(0, v)) # z "lambda" navedemo neko anonimno funkcijo (lambda argumenti: funkcija)
-TO = Ureditev(cilji, lambda c: (c.d, c.pozicija(0, v)))
+# "*" poskrbi, da je vsak cilj določen s 3 ločenimi argumenti
+# podatki za cilje: smer gibanja, čas sprostitve, pozicija ob sprostitvi
+cilji1 = [Cilj(*p) for p in zip([1, 1, -1, -1, -1, 1, -1], [0, 5, 13, 15, 6, 8, 18], [2, 5, -3, 4, 1, -2, -7])] #seznam ciljev
+v1 = 0.3 # hitrost premikanja ciljev
+# možne ureditve ciljev:
+IPO = Ureditev(cilji1, lambda c: c.pozicija(0, v1)) # z "lambda" navedemo neko anonimno funkcijo (lambda argumenti: funkcija)
+TO = Ureditev(cilji1, lambda c: (c.d, c.pozicija(0, v1)))
 IPOc = ObratnaUreditev(IPO)
 TOc = ObratnaUreditev(TO)
 
-print([IPOc.indeks(c) for c in cilji])
-print(cilji)       
-        
-print(IPOc[2])
+print([IPOc.indeks(c) for c in cilji1]) # vrstni red mest v ureditvi IPOc
+print(cilji1) # izpis seznama ciljev      
+print(IPOc[2]) # izpis cilja, ki je na drugem mestu v ureditvi IPOc
 
 # v razredu SLMTTSP (single line moving target traveling salesman problem) določimo metode, ki rešijo začetni problem       
 class SLMTTSP:
@@ -146,25 +168,31 @@ class SLMTTSP:
                             self.f((a, b, c, d), i) # shrani v F minimalni čas, da dosežemo stanje (C, i)
         (C, i) = min((self.f((n, n, n, n), i), i) for i in cilji) # od zaključnega stanja "nazaj" poteka rekurzija
         # z dodatnim i v zadnjem minimumu si zapomnimo še zadnje obiskano mesto
-        resitev = [C[0][1][-1]] # seznam, kamor se shranjujejo obiskana mesta od zadaj naprej (na začetku je notri zadnje obiskano mesto)
-        predhodni_cilj = i # predzadnji cilj
-        predhodni_cilj_trojica = C[0][1][0] # trojica (čas, pozicija, doseženi cilj) za predzadnji doseženi cilj
+        (skupni_cas, odsek), l, predhodni_cilj = C
+        resitev = [odsek] # seznam, kamor se shranjujejo obiskana mesta od zadaj naprej (na začetku je notri zadnje obiskano mesto)
         predhodno_stanje = self.predhodno_stanje((n, n, n, n), i)
-        resitev.append(predhodni_cilj_trojica) # v seznam rešitev dodajamo trojico podatkov za vsak cilj
         while predhodni_cilj is not None: # dokler ima cilj predhodnika
-            predhodni_cilj = self.F[predhodno_stanje, predhodni_cilj][0][1][0][2] # predhodnika preberemo iz slovarja F
-            predhodni_cilj_trojica = self.F[predhodno_stanje, predhodni_cilj][0][1][0] if predhodni_cilj is not None else None # izračun trojice
-            predhodno_stanje = self.predhodno_stanje(predhodno_stanje, predhodni_cilj) # izračun predhodnega stanja
-            resitev.append(predhodni_cilj_trojica)
-        return C[0][0], resitev[::-1][1:] # potreben čas in vrstni red obiska ciljev 
-        # (seznam "resitev" obrnemo okrog, da so cilji ustrezno razporejeni, cilj na indeksu 0 je None in nas ne zanima)
-    
+            i = predhodni_cilj
+            (t, odsek), l, predhodni_cilj = self.F[predhodno_stanje, i] # predhodnika preberemo iz slovarja F
+            predhodno_stanje = self.predhodno_stanje(predhodno_stanje, i) # izračun predhodnega stanja
+            resitev.append(odsek[:-1]) # končno stanje je že začetno stanje naslednjega odseka
+        return skupni_cas, sum(reversed(resitev), []) # potreben čas in vrstni red obiska ciljev 
+        # (seznam "resitev" obrnemo okrog, da so odseki ustrezno razporejeni in te staknemo v en seznam)
 
-# primer uporabe
-v1 = 0.3 # hitrost premikanja ciljev
-# podatki za cilje: smer gibanja, čas sprostitve, pozicija ob sprostitvi       
-cilji1 = [Cilj(*p) for p in zip([1, 1, -1, -1, -1, 1, -1], [0, 5, 13, 15, 6, 8, 18], [2, 5, -3, 4, 1, -2, -7])]      
+# primer uporabe (v in cilji so enaki kot pri prejšnjem primeru)
 primer1 = SLMTTSP(cilji1, v1)
 resitev1 = primer1.resi()
 print(resitev1)
 
+# drugi primer uporabe (NAVODILA ZA UPORABNIKA)
+# Najprej nastavi hitrost premikanja ciljev. Generiraj potrebne sezname, tako da namesto a, b, e, f in n vstaviš želene podatke. 
+# a in b predstavljata časovni interval sprostitve ciljev, e in f interval začetnih pozicij, na katerih se nahajajo cilji ob sprostitvi, 
+# n pa predstavlja število ciljev, ki jih želimo obravnavati. Nato poženi spodnje funkcije. 
+
+# v = 
+# d, r, p = generiraj_sezname_d_r_p(a,b,e,f,n)
+
+# cilji = [Cilj(*p) for p in zip(d, r, p)]
+# primer2 = SLMTTSP(cilji, v)
+# resitev2 = primer2.resi()
+# print(resitev2)
